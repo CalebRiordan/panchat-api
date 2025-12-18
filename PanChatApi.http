@@ -1,0 +1,6 @@
+@PanChatApi_HostAddress = http://localhost:5169
+
+GET {{PanChatApi_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
