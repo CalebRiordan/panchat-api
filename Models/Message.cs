@@ -16,4 +16,5 @@ public class Message
     public Guid UserId { get; set; }
     // User Navigation Property
     public IdentityUser User { get; set; } = null!;
+    public int? QueueOrder { get; set; } = null;
 }
