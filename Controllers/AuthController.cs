@@ -50,7 +50,7 @@ public class AuthController(AppDbContext context, IConfiguration config): Contro
         context.Users.Add(user);
         await context.SaveChangesAsync();
 
-        return Ok("User registration successful");
+        return Ok(new { token = CreateToken(user)});
     }
 
 
