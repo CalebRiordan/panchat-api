@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc.Authorization;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
+using PanChatApi.Controllers;
 using PanChatApi.Data;
 using Scalar.AspNetCore;
 
@@ -13,13 +14,18 @@ var builder = WebApplication.CreateBuilder(args);
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
 
 // ======== Register Services ========
+
 // Database context
 builder.Services.AddDbContext<AppDbContext>(options => options.UseSqlServer(connectionString));
+
+// SignalR
+builder.Services.AddSignalR();
 
 // JWT Auth
 var jwtKey =
     builder.Configuration["Jwt:Key"]
     ?? throw new InvalidOperationException("JWT Key not configured");
+
 builder
     .Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
@@ -31,6 +37,22 @@ builder
             ValidateIssuer = false,
             ValidateAudience = false,
             ClockSkew = TimeSpan.Zero,
+        };
+        options.Events = new JwtBearerEvents
+        {
+            //Extract token from query string and assign to context.Token
+            OnMessageReceived = context =>
+            {
+                var accessToken = context.Request.Query["access-token"];
+                var path = context.HttpContext.Request.Path;
+
+                if (!string.IsNullOrEmpty(accessToken) && path.StartsWithSegments("/hub"))
+                {
+                    context.Token = accessToken;
+                }
+
+                return Task.CompletedTask;
+            }
         };
     });
 
@@ -80,5 +102,6 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
+app.MapHub<PanChatHub>("/hub");
 
 app.Run();

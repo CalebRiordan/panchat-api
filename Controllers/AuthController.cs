@@ -12,9 +12,8 @@ namespace PanChatApi.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-public class AuthController(AppDbContext context, IConfiguration config): ControllerBase
+public class AuthController(AppDbContext context, IConfiguration config) : ControllerBase
 {
-
     [AllowAnonymous]
     [HttpPost("login")]
     public async Task<IActionResult> Login([FromBody] UserDto request)
@@ -26,7 +25,7 @@ public class AuthController(AppDbContext context, IConfiguration config): Contro
             return BadRequest("Invalid username or password");
         }
 
-        return Ok(new { token = CreateToken(user)});
+        return Ok(new { token = CreateToken(user) });
     }
 
     [AllowAnonymous]
@@ -42,28 +41,34 @@ public class AuthController(AppDbContext context, IConfiguration config): Contro
         var user = new User()
         {
             Username = request.Username,
-            HashedPassword = BCrypt.Net.BCrypt.HashPassword(request.Password)
+            HashedPassword = BCrypt.Net.BCrypt.HashPassword(request.Password),
         };
 
         context.Users.Add(user);
         await context.SaveChangesAsync();
 
-        return Ok(new { token = CreateToken(user)});
+        return Ok(new { token = CreateToken(user) });
     }
-
 
     private string CreateToken(User user)
     {
-        var jwtKey = config["Jwt:Key"] ?? throw new InvalidOperationException("JWT Key not configured");
+        var jwtKey =
+            config["Jwt:Key"] ?? throw new InvalidOperationException("JWT Key not configured");
         var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey));
         var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
 
-       var tokenDescriptor = new JwtSecurityToken(
-        claims: [new Claim(ClaimTypes.Name, user.Username)],
-        expires: DateTime.Now.AddDays(30),
-        signingCredentials: creds
-       );
+        var claims = new List<Claim>
+        {
+            new(ClaimTypes.Name, user.Username),
+            new(ClaimTypes.NameIdentifier, user.Id.ToString()),
+        };
 
-       return new JwtSecurityTokenHandler().WriteToken(tokenDescriptor);
+        var tokenDescriptor = new JwtSecurityToken(
+            claims: claims,
+            expires: DateTime.Now.AddDays(30),
+            signingCredentials: creds
+        );
+
+        return new JwtSecurityTokenHandler().WriteToken(tokenDescriptor);
     }
 }

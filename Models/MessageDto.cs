@@ -1,12 +1,9 @@
 using System.ComponentModel.DataAnnotations;
-using System.Text.Json.Serialization;
 
 namespace PanChatApi.Models;
 
-public class Message
+public class MessageDto
 {
-    public Guid Id { get; set; }
-
     [Required]
     public Guid DeviceId { get; set; }
 
@@ -18,15 +15,9 @@ public class Message
     )]
     public string Content { get; set; } = string.Empty;
 
-    [Required(ErrorMessage = "ContentType is required")]
+    [Required]
     public string ContentType { get; set; } = string.Empty;
-    public DateTime DateTimeSent { get; set; } = DateTime.Now;
-    public Guid UserId { get; set; }
 
-    // User Navigation Property
-    [JsonIgnore]
-    public User User { get; set; } = null!;
-
-    // For future use
-    public int? QueueOrder { get; set; } = null;
+    [Required]
+    public DateTime DateTimeSent { get; set; }
 }

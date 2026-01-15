@@ -1,4 +1,6 @@
+using System.Security.Claims;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 using PanChatApi.Data;
 using PanChatApi.Models;
@@ -7,7 +9,10 @@ namespace PanChatApi.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-public class MessageController(AppDbContext context, IConfiguration config) : ControllerBase
+public class MessageController(
+    AppDbContext context,
+    IHubContext<PanChatHub, IChatClient> hubContext
+) : ControllerBase
 {
     [HttpGet("/api/users/{userId}/messages")]
     public async Task<List<Message>> Get(
@@ -32,5 +37,29 @@ public class MessageController(AppDbContext context, IConfiguration config) : Co
             .ThenByDescending(m => m.Id) // Ensures IDs less than the ID of the last message in this page are included in the response
             .Take(limit)
             .ToListAsync();
+    }
+
+    [HttpPost]
+    public async Task<IActionResult> SendMessage([FromBody] MessageDto dto)
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (userId == null)
+            return Unauthorized();
+
+        var message = new Message
+        {
+            DeviceId = dto.DeviceId,
+            Content = dto.Content,
+            ContentType = dto.ContentType,
+            DateTimeSent = dto.DateTimeSent,
+            UserId = Guid.Parse(userId),
+        };
+
+        context.Messages.Add(message);
+        await context.SaveChangesAsync();
+
+        await hubContext.Clients.User(userId).ReceiveMessage(message);
+
+        return Ok(message);
     }
 }
