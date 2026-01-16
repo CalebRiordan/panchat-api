@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
@@ -7,6 +8,7 @@ using PanChatApi.Models;
 
 namespace PanChatApi.Controllers;
 
+[Authorize]
 [ApiController]
 [Route("api/[controller]")]
 public class MessageController(
@@ -50,7 +52,6 @@ public class MessageController(
         {
             DeviceId = dto.DeviceId,
             Content = dto.Content,
-            ContentType = dto.ContentType,
             DateTimeSent = dto.DateTimeSent,
             UserId = Guid.Parse(userId),
         };
@@ -58,6 +59,44 @@ public class MessageController(
         context.Messages.Add(message);
         await context.SaveChangesAsync();
 
+        await hubContext.Clients.User(userId).ReceiveMessage(message);
+
+        return Ok(message);
+    }
+
+    [HttpPost("upload")]
+    public async Task<IActionResult> SendMediaMessage([FromForm] MediaUploadDto dto)
+    {
+        throw new NotImplementedException();
+
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (userId == null)
+            return Unauthorized();
+
+        var allowedExtensions = new[] { ".jpg", ".png", "webp", ".pdf" };
+        var extension = Path.GetExtension(dto.File.FileName).ToLower();
+
+        if (!allowedExtensions.Contains(extension))
+            return BadRequest("Unsupported file type.");
+
+        // Upload file to storage and get URL
+        // ========== TODO: Set up some storage service ===========
+        // string fileUrl = await _storageService.UploadAsync(dto.File);
+        string fileUrl = "TODO";
+
+        // Create message entity and save to DB
+        var message = new Message
+        {
+            Type = extension == ".pdf" ? MessageType.Pdf : MessageType.Image,
+            Content = fileUrl,
+            FileName = dto.File.FileName,
+            UserId = Guid.Parse(userId),
+        };
+
+        context.Messages.Add(message);
+        await context.SaveChangesAsync();
+
+        // 4. Push via SignalR
         await hubContext.Clients.User(userId).ReceiveMessage(message);
 
         return Ok(message);

@@ -16,8 +16,5 @@ public class MessageDto
     public string Content { get; set; } = string.Empty;
 
     [Required]
-    public string ContentType { get; set; } = string.Empty;
-
-    [Required]
     public DateTime DateTimeSent { get; set; }
 }
