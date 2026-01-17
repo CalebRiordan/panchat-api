@@ -16,15 +16,18 @@ public class MessageController(
     IHubContext<PanChatHub, IChatClient> hubContext
 ) : ControllerBase
 {
-    [HttpGet("/api/users/{userId}/messages")]
-    public async Task<List<Message>> Get(
-        Guid userId,
+    [HttpGet("/api/users/messages")]
+    public async Task<ActionResult<List<Message>>> Get(
         [FromQuery] DateTime? cursorDate,
         [FromQuery] Guid? cursorId,
         [FromQuery] int limit = 50
     )
     {
-        var query = context.Messages.AsNoTracking().Where(m => m.UserId == userId);
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (userId == null)
+            return Unauthorized();
+
+        var query = context.Messages.AsNoTracking().Where(m => m.UserId == Guid.Parse(userId));
 
         if (cursorDate.HasValue && cursorId.HasValue)
         {
@@ -42,7 +45,7 @@ public class MessageController(
     }
 
     [HttpPost]
-    public async Task<IActionResult> SendMessage([FromBody] MessageDto dto)
+    public async Task<IActionResult> Send([FromBody] MessageDto dto)
     {
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
         if (userId == null)
@@ -65,7 +68,7 @@ public class MessageController(
     }
 
     [HttpPost("upload")]
-    public async Task<IActionResult> SendMediaMessage([FromForm] MediaUploadDto dto)
+    public async Task<IActionResult> SendMedia([FromForm] MediaUploadDto dto)
     {
         throw new NotImplementedException();
 
