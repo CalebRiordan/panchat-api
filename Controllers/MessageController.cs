@@ -16,7 +16,7 @@ public class MessageController(
     IHubContext<PanChatHub, IChatClient> hubContext
 ) : ControllerBase
 {
-    [HttpGet("/api/users/messages")]
+    [HttpGet("/api/messages")]
     public async Task<ActionResult<List<Message>>> Get(
         [FromQuery] DateTime? cursorDate,
         [FromQuery] Guid? cursorId,
@@ -49,7 +49,7 @@ public class MessageController(
     {
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
         if (userId == null)
-            return Unauthorized();
+            return BadRequest();
 
         var message = new Message
         {

@@ -8,6 +8,8 @@ using Microsoft.IdentityModel.Tokens;
 using PanChatApi.Controllers;
 using PanChatApi.Data;
 using Scalar.AspNetCore;
+using Serilog;
+using Serilog.Sinks.SystemConsole.Themes;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -15,8 +17,13 @@ var connectionString = builder.Configuration.GetConnectionString("DefaultConnect
 
 // ======== Register Services ========
 
+// Serilog Logger
+Log.Logger = new LoggerConfiguration().WriteTo.Console(theme: AnsiConsoleTheme.Code).CreateLogger();
+
 // Database context
-builder.Services.AddDbContext<AppDbContext>(options => options.UseSqlServer(connectionString));
+builder.Services.AddDbContext<AppDbContext>(options =>
+    options.UseSqlServer(connectionString).EnableDetailedErrors().EnableSensitiveDataLogging()
+);
 
 // SignalR
 builder.Services.AddSignalR();
@@ -43,7 +50,7 @@ builder
             //Extract token from query string and assign to context.Token
             OnMessageReceived = context =>
             {
-                var accessToken = context.Request.Query["access-token"];
+                var accessToken = context.Request.Query["access_token"];
                 var path = context.HttpContext.Request.Path;
 
                 if (!string.IsNullOrEmpty(accessToken) && path.StartsWithSegments("/hub"))
@@ -52,7 +59,12 @@ builder
                 }
 
                 return Task.CompletedTask;
-            }
+            },
+            OnAuthenticationFailed = context =>
+            {
+                var exception = context.Exception;
+                return Task.CompletedTask;
+            },
         };
     });
 
@@ -84,6 +96,8 @@ builder.Services.AddCors(options =>
     );
 });
 
+builder.Host.UseSerilog();
+
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
@@ -92,9 +106,11 @@ if (app.Environment.IsDevelopment())
     app.MapOpenApi();
     app.MapScalarApiReference();
 }
-
-app.UseHttpsRedirection();
-app.UseHsts();
+else
+{
+    app.UseHttpsRedirection();
+    app.UseHsts();
+}
 
 app.UseCors("PanChatClientPolicy");
 
