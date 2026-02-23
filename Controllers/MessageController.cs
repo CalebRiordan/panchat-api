@@ -54,10 +54,12 @@ public class MessageController(
         var message = new Message
         {
             DeviceId = dto.DeviceId,
-            Content = dto.Content,
+            Text = dto.Text,
             DateTimeSent = dto.DateTimeSent,
             UserId = Guid.Parse(userId),
         };
+
+        // TODO: Upload files and create Attachment object with new URL
 
         context.Messages.Add(message);
         await context.SaveChangesAsync();
@@ -68,7 +70,7 @@ public class MessageController(
     }
 
     [HttpPost("upload")]
-    public async Task<IActionResult> SendMedia([FromForm] MediaUploadDto dto)
+    public async Task<IActionResult> SendAttachment([FromForm] AttachmentDto dto)
     {
         throw new NotImplementedException();
 
@@ -85,23 +87,7 @@ public class MessageController(
         // Upload file to storage and get URL
         // ========== TODO: Set up some storage service ===========
         // string fileUrl = await _storageService.UploadAsync(dto.File);
-        string fileUrl = "TODO";
 
-        // Create message entity and save to DB
-        var message = new Message
-        {
-            Type = extension == ".pdf" ? MessageType.Pdf : MessageType.Image,
-            Content = fileUrl,
-            FileName = dto.File.FileName,
-            UserId = Guid.Parse(userId),
-        };
-
-        context.Messages.Add(message);
-        await context.SaveChangesAsync();
-
-        // 4. Push via SignalR
-        await hubContext.Clients.User(userId).ReceiveMessage(message);
-
-        return Ok(message);
+        // CHANGED RESPONSIBILITY - BELONGS IN 'Send' ACTION METHOD
     }
 }

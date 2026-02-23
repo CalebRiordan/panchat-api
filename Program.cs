@@ -22,7 +22,7 @@ Log.Logger = new LoggerConfiguration().WriteTo.Console(theme: AnsiConsoleTheme.C
 
 // Database context
 builder.Services.AddDbContext<AppDbContext>(options =>
-    options.UseSqlServer(connectionString).EnableDetailedErrors().EnableSensitiveDataLogging()
+    options.UseNpgsql(connectionString).UseSnakeCaseNamingConvention()
 );
 
 // SignalR
