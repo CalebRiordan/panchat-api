@@ -10,10 +10,11 @@ using PanChatApi.Data;
 using Scalar.AspNetCore;
 using Serilog;
 using Serilog.Sinks.SystemConsole.Themes;
+using Supabase;
 
 var builder = WebApplication.CreateBuilder(args);
 
-var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+var connectionString = builder.Configuration.GetConnectionString("LocalConnection"); // TODO: Change to DefaultConnection
 
 // ======== Register Services ========
 
@@ -23,6 +24,15 @@ Log.Logger = new LoggerConfiguration().WriteTo.Console(theme: AnsiConsoleTheme.C
 // Database context
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseNpgsql(connectionString).UseSnakeCaseNamingConvention()
+);
+
+// Supabase Client for bucket storage
+builder.Services.AddScoped(_ =>
+    new Client(
+        builder.Configuration["Supabase:Url"] ?? "",
+        builder.Configuration["Supabase:Key"] ?? "",
+        new SupabaseOptions { AutoRefreshToken = true }
+    )
 );
 
 // SignalR
