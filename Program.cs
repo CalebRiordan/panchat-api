@@ -30,8 +30,7 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 builder.Services.AddScoped(_ =>
     new Client(
         builder.Configuration["Supabase:Url"] ?? "",
-        builder.Configuration["Supabase:Key"] ?? "",
-        new SupabaseOptions { AutoRefreshToken = true }
+        builder.Configuration["Supabase:Key"] ?? ""
     )
 );
 

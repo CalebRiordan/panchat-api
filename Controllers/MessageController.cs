@@ -68,26 +68,4 @@ public class MessageController(
 
         return Ok(message);
     }
-
-    [HttpPost("upload")]
-    public async Task<IActionResult> SendAttachment([FromForm] AttachmentDto dto)
-    {
-        throw new NotImplementedException();
-
-        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-        if (userId == null)
-            return Unauthorized();
-
-        var allowedExtensions = new[] { ".jpg", ".png", "webp", ".pdf" };
-        var extension = Path.GetExtension(dto.File.FileName).ToLower();
-
-        if (!allowedExtensions.Contains(extension))
-            return BadRequest("Unsupported file type.");
-
-        // Upload file to storage and get URL
-        // ========== TODO: Set up some storage service ===========
-        // string fileUrl = await _storageService.UploadAsync(dto.File);
-
-        // CHANGED RESPONSIBILITY - BELONGS IN 'Send' ACTION METHOD
-    }
 }
