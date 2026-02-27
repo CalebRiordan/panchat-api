@@ -1,9 +1,8 @@
-using Microsoft.Win32.SafeHandles;
-using Supabase;
+using PanChatApi.Models;
 
 namespace PanChatApi.Services;
 
-class FileStorageService(Client supabase) : IFileStorageService
+public class SupabaseStorageService(Supabase.Client supabase) : IFileStorageService
 {
     public async Task DeleteFileAsync(string path, string bucketName)
     {
@@ -13,6 +12,16 @@ class FileStorageService(Client supabase) : IFileStorageService
     public async Task<string> GetUrlAsync(string path, string bucketName, int expiresIn = 3600)
     {
         return await supabase.Storage.From(bucketName).CreateSignedUrl(path, expiresIn);
+    }
+
+    public async Task<List<SignedAttachment>> GetUrlsAsync(List<string> paths, string bucketName, int expiresIn = 3600)
+    {
+        var responses = await supabase.Storage.From(bucketName).CreateSignedUrls(paths, expiresIn);
+        if (responses == null || responses.Count == 0)
+        {
+            return [];    
+        } 
+        return responses.Select(s => new SignedAttachment{ FilePath = s.Path!, SignedUrl = s.SignedUrl!}).ToList();
     }
 
     public async Task<string> UploadFileAsync(IFormFile file, string bucketName)
@@ -27,7 +36,7 @@ class FileStorageService(Client supabase) : IFileStorageService
         var fileBytes = ms.ToArray();
 
         string ext = Path.GetExtension(file.FileName);
-        string fileName = $"{Guid.NewGuid()}{ext}";
+        string fileName = $"{Guid.NewGuid()}_{ext}";
 
         await supabase
             .Storage.From(bucketName)

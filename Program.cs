@@ -7,6 +7,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using PanChatApi.Controllers;
 using PanChatApi.Data;
+using PanChatApi.Services;
 using Scalar.AspNetCore;
 using Serilog;
 using Serilog.Sinks.SystemConsole.Themes;
@@ -33,6 +34,9 @@ builder.Services.AddScoped(_ =>
         builder.Configuration["Supabase:Key"] ?? ""
     )
 );
+
+// File Storage (Supabase) Service
+builder.Services.AddScoped<IFileStorageService, SupabaseStorageService>();
 
 // SignalR
 builder.Services.AddSignalR();

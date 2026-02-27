@@ -23,7 +23,7 @@ public class Attachment
     public DateTime DateTimeSent { get; set; } = DateTime.Now;
 
     [Required]
-    public required Guid MessageId { get; set; }
+    public Guid MessageId { get; set; }
 
     [JsonIgnore]
     public Message Message { get; set; } = null!;

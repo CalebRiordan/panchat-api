@@ -6,7 +6,7 @@ namespace PanChatApi.Controllers;
 
 public interface IChatClient
 {
-    Task ReceiveMessage(Message message);
+    Task PushMessage(Message message);
     Task UserTyping(Guid userId);
 }
 
