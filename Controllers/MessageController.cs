@@ -46,6 +46,9 @@ public class MessageController(
             .Take(limit)
             .ToListAsync();
 
+        if (messages.Count == 0)
+            return Ok(messages);
+
         var allPaths = messages.SelectMany(m => m.Attachments.Select(a => a.Url)).ToList();
         var signedAttachments = await storageService.GetUrlsAsync(
             allPaths,
@@ -65,7 +68,7 @@ public class MessageController(
     }
 
     [HttpPost]
-    public async Task<IActionResult> Send([FromBody] MessageDto dto)
+    public async Task<IActionResult> Send([FromForm] MessageDto dto)
     {
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
         if (userId == null)
@@ -90,7 +93,6 @@ public class MessageController(
                 new Attachment
                 {
                     Url = filePath,
-                    Type = att.Type,
                     DateTimeSent = att.DateTimeSent,
                 }
             );

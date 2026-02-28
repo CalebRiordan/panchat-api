@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using PanChatApi.Data;
@@ -11,9 +12,11 @@ using PanChatApi.Data;
 namespace PanChatApi.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260228133047_RemoveAttachmentMessageLink")]
+    partial class RemoveAttachmentMessageLink
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -120,12 +123,14 @@ namespace PanChatApi.Migrations
 
             modelBuilder.Entity("PanChatApi.Models.Attachment", b =>
                 {
-                    b.HasOne("PanChatApi.Models.Message", null)
+                    b.HasOne("PanChatApi.Models.Message", "Message")
                         .WithMany("Attachments")
                         .HasForeignKey("MessageId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
                         .HasConstraintName("fk_attachments_messages_message_id");
+
+                    b.Navigation("Message");
                 });
 
             modelBuilder.Entity("PanChatApi.Models.Message", b =>

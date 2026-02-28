@@ -22,11 +22,7 @@ public class Attachment
 
     public DateTime DateTimeSent { get; set; } = DateTime.Now;
 
-    [Required]
     public Guid MessageId { get; set; }
-
-    [JsonIgnore]
-    public Message Message { get; set; } = null!;
 
     // For future use
     public int? QueueOrder { get; set; }
