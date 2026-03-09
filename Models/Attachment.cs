@@ -7,6 +7,7 @@ public enum AttachmentType
 {
     Image,
     Pdf,
+    Word,
 }
 
 public class Attachment
@@ -15,10 +16,6 @@ public class Attachment
 
     [Required]
     public required string Url { get; set; }
-
-    [Required]
-    [MaxLength(5)]
-    public AttachmentType Type { get; set; } = AttachmentType.Image;
 
     public DateTime DateTimeSent { get; set; } = DateTime.Now;
 

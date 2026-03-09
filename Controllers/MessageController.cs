@@ -94,6 +94,7 @@ public class MessageController(
                 {
                     Url = filePath,
                     DateTimeSent = att.DateTimeSent,
+                    QueueOrder = att.QueueOrder
                 }
             );
         }
