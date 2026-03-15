@@ -15,7 +15,8 @@ namespace PanChatApi.Controllers;
 public class MessageController(
     AppDbContext context,
     IHubContext<PanChatHub, IChatClient> hubContext,
-    IFileStorageService storageService
+    IFileStorageService storageService,
+    ILogger<MessageController> logger
 ) : ControllerBase
 {
     [HttpGet("/api/messages")]
@@ -41,7 +42,7 @@ public class MessageController(
 
         var messages = await query
             .Include(m => m.Attachments)
-            .OrderByDescending(m => m.DateTimeSent)
+            .OrderBy(m => m.DateTimeSent)
             .ThenByDescending(m => m.Id) // Ensures IDs less than the ID of the last message in this page are included in the response
             .Take(limit)
             .ToListAsync();
@@ -50,17 +51,22 @@ public class MessageController(
             return Ok(messages);
 
         var allPaths = messages.SelectMany(m => m.Attachments.Select(a => a.Url)).ToList();
-        var signedAttachments = await storageService.GetUrlsAsync(
-            allPaths,
-            IFileStorageService.BucketName
-        );
 
-        foreach (var msg in messages)
+        if (allPaths.Count > 0)
         {
-            foreach (var att in msg.Attachments)
+            var signedAttachments = await storageService.GetUrlsAsync(
+                allPaths,
+                IFileStorageService.BucketName
+            );
+
+            foreach (var msg in messages)
             {
-                att.Url =
-                    signedAttachments.FirstOrDefault(sa => sa.FilePath == att.Url)?.SignedUrl ?? "";
+                foreach (var att in msg.Attachments)
+                {
+                    att.Url =
+                        signedAttachments.FirstOrDefault(sa => sa.FilePath == att.Url)?.SignedUrl
+                        ?? "";
+                }
             }
         }
 
@@ -68,7 +74,7 @@ public class MessageController(
     }
 
     [HttpPost]
-    public async Task<IActionResult> Send([FromForm] MessageDto dto)
+    public async Task<IActionResult> Send([FromBody] MessageDto dto)
     {
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
         if (userId == null)
@@ -94,7 +100,7 @@ public class MessageController(
                 {
                     Url = filePath,
                     DateTimeSent = att.DateTimeSent,
-                    QueueOrder = att.QueueOrder
+                    QueueOrder = att.QueueOrder,
                 }
             );
         }

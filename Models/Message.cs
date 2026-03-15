@@ -24,6 +24,5 @@ public class Message
     [JsonIgnore]
     public User User { get; set; } = null!;
 
-    [JsonIgnore]
     public List<Attachment> Attachments { get; set; } = [];
 }
