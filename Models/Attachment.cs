@@ -17,8 +17,6 @@ public class Attachment
     [Required]
     public required string Url { get; set; }
 
-    public DateTime DateTimeSent { get; set; } = DateTime.Now;
-
     public Guid MessageId { get; set; }
 
     // For future use

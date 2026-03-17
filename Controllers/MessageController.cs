@@ -30,6 +30,8 @@ public class MessageController(
         if (userId == null)
             return Unauthorized();
 
+        logger.LogInformation("Getting messages with cursorId: {@cursor}", cursorId);
+
         var query = context.Messages.AsNoTracking().Where(m => m.UserId == Guid.Parse(userId));
 
         if (cursorDate.HasValue && cursorId.HasValue)
@@ -74,7 +76,7 @@ public class MessageController(
     }
 
     [HttpPost]
-    public async Task<IActionResult> Send([FromBody] MessageDto dto)
+    public async Task<IActionResult> Send([FromForm] MessageDto dto)
     {
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
         if (userId == null)
@@ -99,7 +101,6 @@ public class MessageController(
                 new Attachment
                 {
                     Url = filePath,
-                    DateTimeSent = att.DateTimeSent,
                     QueueOrder = att.QueueOrder,
                 }
             );
@@ -107,6 +108,9 @@ public class MessageController(
 
         context.Messages.Add(message);
         await context.SaveChangesAsync();
+
+        // logger.LogInformation("\n\nSaved message: {@message}\n\n", message);
+        // TODO: Dont push message with file path as attachment URL. Get signed URLs
 
         await hubContext.Clients.User(userId).PushMessage(message);
 
