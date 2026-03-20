@@ -50,9 +50,11 @@ public class MessageController(
             .Take(limit)
             .ToListAsync();
 
-        if (messages.Count == 0)
+        if (messages.Count > 0)
         {
             var allPaths = messages.SelectMany(m => m.Attachments.Select(a => a.Url)).ToList();
+
+            logger.LogInformation("\n{@allPaths}\n", allPaths);
 
             if (allPaths.Count > 0)
             {
@@ -113,16 +115,19 @@ public class MessageController(
         // logger.LogInformation("\n\nSaved message: {@message}\n\n", message);
 
         // Get signed URLs for message's attachments
-        var signedAttachments = await storageService.GetUrlsAsync(
-            filePaths,
-            IFileStorageService.BucketName
-        );
-
-        // Update message entity with signed URL
-        foreach (var att in message.Attachments)
+        if (message.Attachments.Count > 0)
         {
-            att.Url =
-                signedAttachments.FirstOrDefault(sa => sa.FilePath == att.Url)?.SignedUrl ?? "";
+            var signedAttachments = await storageService.GetUrlsAsync(
+                filePaths,
+                IFileStorageService.BucketName
+            );
+
+            // Update message entity with signed URL
+            foreach (var att in message.Attachments)
+            {
+                att.Url =
+                    signedAttachments.FirstOrDefault(sa => sa.FilePath == att.Url)?.SignedUrl ?? "";
+            }
         }
 
         await hubContext.Clients.User(userId).PushMessage(message);
