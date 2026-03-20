@@ -30,18 +30,19 @@ public class MessageController(
         if (userId == null)
             return Unauthorized();
 
-        logger.LogInformation("Getting messages with cursorId: {@cursor}", cursorId);
-
+        // Set up query (don't execute yet)
         var query = context.Messages.AsNoTracking().Where(m => m.UserId == Guid.Parse(userId));
 
         if (cursorDate.HasValue && cursorId.HasValue)
         {
+            // Retrieve messages according to cursor date and ID
             query = query.Where(m =>
                 m.DateTimeSent < cursorDate
                 || (m.DateTimeSent == cursorDate && m.Id.CompareTo(cursorId) < 0)
             );
         }
 
+        // Execute query
         var messages = await query
             .Include(m => m.Attachments)
             .OrderBy(m => m.DateTimeSent)
@@ -50,24 +51,27 @@ public class MessageController(
             .ToListAsync();
 
         if (messages.Count == 0)
-            return Ok(messages);
-
-        var allPaths = messages.SelectMany(m => m.Attachments.Select(a => a.Url)).ToList();
-
-        if (allPaths.Count > 0)
         {
-            var signedAttachments = await storageService.GetUrlsAsync(
-                allPaths,
-                IFileStorageService.BucketName
-            );
+            var allPaths = messages.SelectMany(m => m.Attachments.Select(a => a.Url)).ToList();
 
-            foreach (var msg in messages)
+            if (allPaths.Count > 0)
             {
-                foreach (var att in msg.Attachments)
+                // Get signed URLs from Supabase
+                var signedAttachments = await storageService.GetUrlsAsync(
+                    allPaths,
+                    IFileStorageService.BucketName
+                );
+
+                // Update message entities with signed URL
+                foreach (var msg in messages)
                 {
-                    att.Url =
-                        signedAttachments.FirstOrDefault(sa => sa.FilePath == att.Url)?.SignedUrl
-                        ?? "";
+                    foreach (var att in msg.Attachments)
+                    {
+                        att.Url =
+                            signedAttachments
+                                .FirstOrDefault(sa => sa.FilePath == att.Url)
+                                ?.SignedUrl ?? "";
+                    }
                 }
             }
         }
@@ -91,26 +95,35 @@ public class MessageController(
         };
 
         // Upload files and save file path
+        List<string> filePaths = [];
         foreach (var att in dto.Attachments)
         {
             var filePath = await storageService.UploadFileAsync(
                 att.File,
                 IFileStorageService.BucketName
             );
-            message.Attachments.Add(
-                new Attachment
-                {
-                    Url = filePath,
-                    QueueOrder = att.QueueOrder,
-                }
-            );
+            filePaths.Add(filePath);
+
+            message.Attachments.Add(new Attachment { Url = filePath, QueueOrder = att.QueueOrder });
         }
 
         context.Messages.Add(message);
         await context.SaveChangesAsync();
 
         // logger.LogInformation("\n\nSaved message: {@message}\n\n", message);
-        // TODO: Dont push message with file path as attachment URL. Get signed URLs
+
+        // Get signed URLs for message's attachments
+        var signedAttachments = await storageService.GetUrlsAsync(
+            filePaths,
+            IFileStorageService.BucketName
+        );
+
+        // Update message entity with signed URL
+        foreach (var att in message.Attachments)
+        {
+            att.Url =
+                signedAttachments.FirstOrDefault(sa => sa.FilePath == att.Url)?.SignedUrl ?? "";
+        }
 
         await hubContext.Clients.User(userId).PushMessage(message);
 
