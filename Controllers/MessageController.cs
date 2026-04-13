@@ -106,7 +106,7 @@ public class MessageController(
             );
             filePaths.Add(filePath);
 
-            message.Attachments.Add(new Attachment { Url = filePath, QueueOrder = att.QueueOrder });
+            message.Attachments.Add(new Attachment { Url = filePath, QueueOrder = att.QueueOrder, Type = att.File.ContentType });
         }
 
         context.Messages.Add(message);

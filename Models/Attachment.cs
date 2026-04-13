@@ -17,6 +17,9 @@ public class Attachment
     [Required]
     public required string Url { get; set; }
 
+    [Required]
+    public required string Type { get; set; }
+
     public Guid MessageId { get; set; }
 
     // For future use
