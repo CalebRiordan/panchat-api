@@ -1,5 +1,9 @@
+using System.IO.Compression;
 using System.Security.Claims;
+using System.Text.RegularExpressions;
+using System.Xml.Linq;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
@@ -12,7 +16,7 @@ namespace PanChatApi.Controllers;
 [Authorize]
 [ApiController]
 [Route("api/[controller]")]
-public class MessageController(
+public partial class MessageController(
     AppDbContext context,
     IHubContext<PanChatHub, IChatClient> hubContext,
     IFileStorageService storageService,
@@ -96,23 +100,52 @@ public class MessageController(
             UserId = Guid.Parse(userId),
         };
 
-        // Upload files and save file path
+        // Upload files and save file path. Also capture size and page count for PDFs/DOCX.
         List<string> filePaths = [];
         foreach (var att in dto.Attachments)
         {
+            // Read file into memory to compute metadata (size, page count)
+            byte[] fileBytes;
+            await using (var ms = new MemoryStream())
+            {
+                await att.File.CopyToAsync(ms);
+                fileBytes = ms.ToArray();
+            }
+
+            long? size = fileBytes.LongLength;
+            int? pageCount = null;
+
+            var ext = Path.GetExtension(att.File.FileName).ToLowerInvariant();
+            if (ext == ".pdf")
+            {
+                pageCount = GetPdfPageCount(fileBytes);
+            }
+            else if (ext == ".docx")
+            {
+                pageCount = GetDocxPageCount(fileBytes);
+            }
+
             var filePath = await storageService.UploadFileAsync(
                 att.File,
                 IFileStorageService.BucketName
             );
             filePaths.Add(filePath);
 
-            message.Attachments.Add(new Attachment { Url = filePath, QueueOrder = att.QueueOrder, Type = att.File.ContentType });
+            message.Attachments.Add(
+                new Attachment
+                {
+                    Url = filePath,
+                    Filename = att.File.FileName,
+                    QueueOrder = att.QueueOrder,
+                    Type = att.File.ContentType,
+                    Size = size,
+                    PageCount = pageCount,
+                }
+            );
         }
 
         context.Messages.Add(message);
         await context.SaveChangesAsync();
-
-        // logger.LogInformation("\n\nSaved message: {@message}\n\n", message);
 
         // Get signed URLs for message's attachments
         if (message.Attachments.Count > 0)
@@ -134,4 +167,58 @@ public class MessageController(
 
         return Ok(message);
     }
+
+    private static int? GetDocxPageCount(byte[] fileBytes)
+    {
+        try
+        {
+            using var ms = new MemoryStream(fileBytes);
+            using var zip = new ZipArchive(ms, ZipArchiveMode.Read, leaveOpen: true);
+            var entry = zip.GetEntry("docProps/app.xml");
+            if (entry == null)
+                return null;
+            using var stream = entry.Open();
+            var doc = XDocument.Load(stream);
+            var pagesElement = doc
+                .Root?.Elements()
+                .FirstOrDefault(e => e.Name.LocalName == "Pages");
+            if (pagesElement == null)
+                return null;
+            if (int.TryParse(pagesElement.Value, out var pages))
+                return pages;
+            return null;
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    private static int? GetPdfPageCount(byte[] fileBytes)
+    {
+        try
+        {
+            // Heuristic: count occurrences of "/Type /Page" which is commonly present for each page
+            var text = System.Text.Encoding.ASCII.GetString(fileBytes);
+            var matches = TypePageRegex().Matches(text);
+            if (matches.Count > 0)
+                return matches.Count;
+
+            // Fallback: try to locate "/Count <n>" inside a Pages object
+            var m = CountNRegex().Match(text);
+            if (m.Success && int.TryParse(m.Groups[1].Value, out var cnt))
+                return cnt;
+            return null;
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    [GeneratedRegex(@"/Type\s*/Page")]
+    private static partial Regex TypePageRegex();
+
+    [GeneratedRegex(@"/Count\s+(\d+)")]
+    private static partial Regex CountNRegex();
 }
