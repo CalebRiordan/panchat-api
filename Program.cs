@@ -100,6 +100,7 @@ builder.Services.AddOpenApi();
 
 // CORS
 var allowedOrigins = builder.Configuration.GetValue<string>("AllowedOrigins")?.Split(',') ?? [];
+Console.WriteLine(allowedOrigins);
 builder.Services.AddCors(options =>
 {
     options.AddPolicy(
